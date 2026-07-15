@@ -24,9 +24,22 @@ DB_CONFIG = {
 st.set_page_config(page_title="Student Academic Records", page_icon="🎓", layout="wide")
 
 
+def _database_url():
+    """Cloud deployments provide a single connection URL via the DATABASE_URL
+    environment variable or Streamlit secrets; fall back to local settings."""
+    url = os.getenv("DATABASE_URL")
+    if url:
+        return url
+    try:
+        return st.secrets["DATABASE_URL"]
+    except (KeyError, FileNotFoundError):
+        return None
+
+
 @st.cache_resource
 def get_connection():
-    conn = psycopg2.connect(**DB_CONFIG)
+    url = _database_url()
+    conn = psycopg2.connect(url) if url else psycopg2.connect(**DB_CONFIG)
     conn.autocommit = True
     return conn
 

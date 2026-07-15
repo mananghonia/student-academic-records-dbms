@@ -1,6 +1,6 @@
 # Student Academic Records Management System
 
-This project implements a Student Academic Records Management System using PostgreSQL. It includes SQL scripts for table creation, data insertion, and various queries, designed using normalization principles.
+This project implements a Student Academic Records Management System using PostgreSQL, with a Streamlit web app on top for CRUD operations. It includes SQL scripts for table creation with integrity constraints, a PL/pgSQL trigger, data insertion, advanced queries, indexing and transactions — all designed using normalization principles.
 
 ## Project Structure
 
@@ -14,6 +14,7 @@ The project is divided into the following SQL script files:
 6. **indexes.sql**: Secondary indexes plus `EXPLAIN ANALYZE` query-plan comparisons.
 7. **transactions.sql**: `BEGIN` / `COMMIT` / `ROLLBACK` / `SAVEPOINT` demonstration (ACID).
 8. **all_student_records_dbms.sql**: The complete script (DDL + trigger + DML + queries) in a single file.
+9. **app.py**: Streamlit web app for CRUD on the database (see below).
 
 ## Tables
 
@@ -84,6 +85,35 @@ The `queries.sql` file contains SQL commands to fetch data from the tables:
 3. Create a view of Test1 marks of a given student in all courses.
 4. Calculate the Final IA (average of the best two test marks) and update the table for all students.
 5. Categorize 8th semester students as Outstanding / Average / Weak based on their Final IA.
+
+## Web App (Streamlit)
+
+`app.py` is a Streamlit front-end over the same database, demonstrating the full CRUD cycle:
+
+- **Dashboard** — student/course/section/marks counts, average Final IA per course, students per section.
+- **Students** — list, add (validated by the database's CHECK constraints) and delete (cascades to enrollments and marks).
+- **Enrollments** — enroll students into semester-sections.
+- **Enter Marks** — record the three test marks; `FINAL_IA` is filled in by the database trigger, not the app.
+- **Report Card** — per-student marks with the Outstanding/Average/Weak category.
+
+Every statement uses **parameterized queries** (`%s` placeholders via psycopg2) — user input is never concatenated into SQL, which prevents SQL injection.
+
+### Screenshots
+
+![Dashboard](screenshots/dashboard.png)
+
+![Report Card](screenshots/report_card.png)
+
+![Enter Marks](screenshots/enter_marks.png)
+
+### Running the app
+
+```sh
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The app connects to `localhost:5432 / student_records / postgres` by default; override with the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` environment variables.
 
 ## How to Run
 

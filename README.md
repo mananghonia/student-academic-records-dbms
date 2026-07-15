@@ -6,10 +6,14 @@ This project implements a Student Academic Records Management System using Postg
 
 The project is divided into the following SQL script files:
 
-1. **ddl.sql**: Contains Data Definition Language (DDL) commands for creating tables.
-2. **dml.sql**: Contains Data Manipulation Language (DML) commands for inserting data into the tables.
-3. **queries.sql**: Contains various SQL queries for retrieving and manipulating data.
-4. **all_student_records_dbms.sql**: The complete script (DDL + DML + queries) in a single file.
+1. **ddl.sql**: Data Definition Language (DDL) commands for creating tables, with integrity constraints (`CHECK`, `NOT NULL`, `UNIQUE`, `ON DELETE CASCADE`).
+2. **triggers.sql**: PL/pgSQL trigger that automatically computes `FINAL_IA` on every insert/update of test marks.
+3. **dml.sql**: Data Manipulation Language (DML) commands for inserting data into the tables.
+4. **queries.sql**: The five core queries for retrieving and manipulating data.
+5. **advanced_queries.sql**: Subqueries, correlated subqueries, `EXISTS`, `HAVING` and `LEFT JOIN` examples.
+6. **indexes.sql**: Secondary indexes plus `EXPLAIN ANALYZE` query-plan comparisons.
+7. **transactions.sql**: `BEGIN` / `COMMIT` / `ROLLBACK` / `SAVEPOINT` demonstration (ACID).
+8. **all_student_records_dbms.sql**: The complete script (DDL + trigger + DML + queries) in a single file.
 
 ## Tables
 
@@ -30,6 +34,36 @@ The database consists of the following tables:
 - A student (`STUDENTS`) can be enrolled in multiple semester-sections through `CLASS_ENROLLMENT` (many-to-many).
 - Each course (`COURSES`) belongs to a semester.
 - `INTERNAL_MARKS` records the three internal test marks of a student for a course in a particular section, along with the computed final internal assessment (best two of three tests).
+
+## Normalization
+
+The schema is in **Third Normal Form (3NF)**:
+
+- **1NF** — every attribute holds a single atomic value; there are no repeating groups (the three tests are separate graded events recorded as separate columns of one marks entry, and each row is uniquely identified by a primary key).
+- **2NF** — no partial dependencies on a composite key. In `INTERNAL_MARKS` (key: `ROLL_NO, COURSE_CODE, SEC_ID`) every non-key attribute (the test marks) depends on the *whole* key — a mark is meaningless without knowing the student, the course, *and* the section. Student details like `FULL_NAME` are kept in `STUDENTS`, not repeated in `INTERNAL_MARKS`, precisely because they depend only on `ROLL_NO`.
+- **3NF** — no transitive dependencies: in `STUDENTS` every non-key attribute depends directly on `ROLL_NO` alone; in `COURSES` everything depends on `COURSE_CODE` alone.
+- The **many-to-many** relationship between students and semester-sections is resolved through the junction table `CLASS_ENROLLMENT`, instead of storing lists of sections inside `STUDENTS`.
+
+## Data Integrity (Constraints)
+
+Defined in `ddl.sql`:
+
+- `CHECK` constraints: test marks must be 0–25, semester 1–8, section A/B/C, gender M/F, credits 1–5, mobile must be exactly 10 digits.
+- `NOT NULL` on essential attributes (name, gender, semester, course title, …).
+- `UNIQUE` on student mobile numbers.
+- `FOREIGN KEY ... ON DELETE CASCADE`: deleting a student automatically removes their enrollments and marks, so no orphan rows can exist.
+
+## Trigger (Automatic Final IA)
+
+`triggers.sql` defines a `BEFORE INSERT OR UPDATE` trigger on `INTERNAL_MARKS`. Whenever test marks are inserted or changed, the trigger recomputes `FINAL_IA` as the average of the best two of the three tests (or `NULL` until all three tests have marks). The stored value can therefore never go stale.
+
+## Indexes & Query Optimization
+
+`indexes.sql` creates secondary indexes on the join columns (`COURSE_CODE`, `SEC_ID`) and filter columns (`CITY`, `(SEMESTER, SECTION)`), and uses `EXPLAIN ANALYZE` to inspect the query plans. On tiny tables PostgreSQL prefers sequential scans; the indexes demonstrate the read-speed vs. write-cost trade-off that matters at scale.
+
+## Transactions (ACID)
+
+`transactions.sql` demonstrates atomicity: a multi-statement admission (`INSERT` student + `INSERT` enrollment) committed as one unit, a `DELETE` safely undone with `ROLLBACK`, and partial undo inside a transaction using `SAVEPOINT`.
 
 ## SQL Scripts
 
@@ -55,9 +89,10 @@ The `queries.sql` file contains SQL commands to fetch data from the tables:
 
 1. Install PostgreSQL: Make sure PostgreSQL is installed on your system.
 2. Create Database: Create a new database in PostgreSQL (e.g. `student_records`).
-3. Execute DDL Script: Run the `ddl.sql` script to create the tables.
-4. Execute DML Script: Run the `dml.sql` script to insert data into the tables.
-5. Execute Queries: Run the `queries.sql` script to perform the various queries.
+3. Run `ddl.sql` to create the tables with their constraints.
+4. Run `triggers.sql` to install the Final IA trigger.
+5. Run `dml.sql` to insert data (the trigger fills in `FINAL_IA` automatically).
+6. Run `queries.sql`, `advanced_queries.sql`, `indexes.sql` and `transactions.sql` to explore the queries.
 
 Alternatively, run everything at once:
 

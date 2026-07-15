@@ -23,6 +23,9 @@ WHERE Roll_No = 'gec21cs011';
 SELECT * FROM Test1_Report;
 
 -- 4. Calculate the Final_IA (average of best two test marks) and update the corresponding table for all students.
+--    NOTE: with triggers.sql installed, the trg_compute_final_ia trigger computes Final_IA
+--    automatically on every INSERT/UPDATE, so this manual UPDATE affects 0 rows.
+--    It is kept to show the set-based calculation.
 UPDATE INTERNAL_MARKS
 SET Final_IA = ROUND((Test1 + Test2 + Test3 - LEAST(Test1, Test2, Test3)) / 2.0)
 WHERE Final_IA IS NULL;

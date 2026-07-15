@@ -1,137 +1,142 @@
-# Student Academic Records Management System
+# 🎓 Student Academic Records Management System
 
-**🌐 Live demo: https://student-academic-records.streamlit.app** (Streamlit Community Cloud + Neon serverless PostgreSQL)
+A full-stack DBMS project: a normalized **PostgreSQL** database for managing students, course enrollments and internal-assessment marks, with a **Streamlit** web app on top for CRUD operations.
 
-This project implements a Student Academic Records Management System using PostgreSQL, with a Streamlit web app on top for CRUD operations. It includes SQL scripts for table creation with integrity constraints, a PL/pgSQL trigger, data insertion, advanced queries, indexing and transactions — all designed using normalization principles.
+**🌐 Live demo:** https://student-academic-records.streamlit.app
 
-## Project Structure
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-336791?logo=postgresql&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-app-FF4B4B?logo=streamlit&logoColor=white)
+![License](https://img.shields.io/badge/database-3NF-success)
 
-The project is divided into the following SQL script files:
+## ✨ Highlights
 
-1. **ddl.sql**: Data Definition Language (DDL) commands for creating tables, with integrity constraints (`CHECK`, `NOT NULL`, `UNIQUE`, `ON DELETE CASCADE`).
-2. **triggers.sql**: PL/pgSQL trigger that automatically computes `FINAL_IA` on every insert/update of test marks.
-3. **dml.sql**: Data Manipulation Language (DML) commands for inserting data into the tables.
-4. **queries.sql**: The five core queries for retrieving and manipulating data.
-5. **advanced_queries.sql**: Subqueries, correlated subqueries, `EXISTS`, `HAVING` and `LEFT JOIN` examples.
-6. **indexes.sql**: Secondary indexes plus `EXPLAIN ANALYZE` query-plan comparisons.
-7. **transactions.sql**: `BEGIN` / `COMMIT` / `ROLLBACK` / `SAVEPOINT` demonstration (ACID).
-8. **all_student_records_dbms.sql**: The complete script (DDL + trigger + DML + queries) in a single file.
-9. **app.py**: Streamlit web app for CRUD on the database (see below).
+- **Normalized schema (3NF)** with a junction table resolving the student ↔ section many-to-many relationship
+- **Integrity constraints** — `CHECK`, `NOT NULL`, `UNIQUE`, composite keys, `ON DELETE CASCADE`
+- **PL/pgSQL trigger** that auto-computes the final internal assessment (best two of three tests) on every insert/update
+- **Advanced SQL** — correlated subqueries, `EXISTS`, `HAVING`, `LEFT JOIN`, views
+- **Indexing** with `EXPLAIN ANALYZE` query-plan comparisons
+- **ACID transactions** — `COMMIT`, `ROLLBACK`, `SAVEPOINT` demos
+- **Web app** with SQL-injection-safe parameterized queries (psycopg2)
+- **Deployed** on Streamlit Community Cloud + Neon serverless PostgreSQL
 
-## Tables
-
-The database consists of the following tables:
-
-- `STUDENTS`: Stores details of students.
-- `SEM_SECTION`: Stores information about semesters and sections.
-- `CLASS_ENROLLMENT`: Stores information about which student is enrolled in which class.
-- `COURSES`: Stores details about courses.
-- `INTERNAL_MARKS`: Stores internal assessment marks of students.
-
-## Entity Relationship Diagram
+## 📊 Entity Relationship Diagram
 
 ![ER Diagram](er_diagram.svg)
 
-## Entity Relationship Overview
+- A student can be enrolled in multiple semester-sections through `CLASS_ENROLLMENT` (many-to-many).
+- Each course belongs to a semester.
+- `INTERNAL_MARKS` records a student's three test marks for a course in a particular section; the derived attribute `FINAL_IA` (dashed oval) is maintained by a trigger.
 
-- A student (`STUDENTS`) can be enrolled in multiple semester-sections through `CLASS_ENROLLMENT` (many-to-many).
-- Each course (`COURSES`) belongs to a semester.
-- `INTERNAL_MARKS` records the three internal test marks of a student for a course in a particular section, along with the computed final internal assessment (best two of three tests).
+## 🗄️ Database Schema
 
-## Normalization
+| Table | Purpose | Key |
+|---|---|---|
+| `STUDENTS` | Student details (name, city, mobile, gender) | `ROLL_NO` |
+| `SEM_SECTION` | Semester + section combinations | `SEC_ID` |
+| `CLASS_ENROLLMENT` | Junction table: which student is in which section | `(ROLL_NO, SEC_ID)` |
+| `COURSES` | Course catalogue with semester and credits | `COURSE_CODE` |
+| `INTERNAL_MARKS` | Three test marks + computed Final IA per student/course/section | `(ROLL_NO, COURSE_CODE, SEC_ID)` |
 
-The schema is in **Third Normal Form (3NF)**:
+## 📁 Project Files
 
-- **1NF** — every attribute holds a single atomic value; there are no repeating groups (the three tests are separate graded events recorded as separate columns of one marks entry, and each row is uniquely identified by a primary key).
-- **2NF** — no partial dependencies on a composite key. In `INTERNAL_MARKS` (key: `ROLL_NO, COURSE_CODE, SEC_ID`) every non-key attribute (the test marks) depends on the *whole* key — a mark is meaningless without knowing the student, the course, *and* the section. Student details like `FULL_NAME` are kept in `STUDENTS`, not repeated in `INTERNAL_MARKS`, precisely because they depend only on `ROLL_NO`.
-- **3NF** — no transitive dependencies: in `STUDENTS` every non-key attribute depends directly on `ROLL_NO` alone; in `COURSES` everything depends on `COURSE_CODE` alone.
-- The **many-to-many** relationship between students and semester-sections is resolved through the junction table `CLASS_ENROLLMENT`, instead of storing lists of sections inside `STUDENTS`.
+| File | Contents |
+|---|---|
+| [`ddl.sql`](ddl.sql) | Table creation with all integrity constraints |
+| [`triggers.sql`](triggers.sql) | PL/pgSQL trigger auto-computing `FINAL_IA` |
+| [`dml.sql`](dml.sql) | Sample data inserts |
+| [`queries.sql`](queries.sql) | The five core queries (joins, aggregation, view, `CASE` categorization) |
+| [`advanced_queries.sql`](advanced_queries.sql) | Subqueries, correlated subqueries, `EXISTS`, `HAVING`, `LEFT JOIN` |
+| [`indexes.sql`](indexes.sql) | Secondary indexes + `EXPLAIN ANALYZE` plans |
+| [`transactions.sql`](transactions.sql) | `COMMIT` / `ROLLBACK` / `SAVEPOINT` demonstration |
+| [`all_student_records_dbms.sql`](all_student_records_dbms.sql) | Everything in one runnable script |
+| [`app.py`](app.py) | Streamlit CRUD web app |
 
-## Data Integrity (Constraints)
+## 🧩 Database Design Concepts
 
-Defined in `ddl.sql`:
+### Normalization (3NF)
 
-- `CHECK` constraints: test marks must be 0–25, semester 1–8, section A/B/C, gender M/F, credits 1–5, mobile must be exactly 10 digits.
-- `NOT NULL` on essential attributes (name, gender, semester, course title, …).
-- `UNIQUE` on student mobile numbers.
-- `FOREIGN KEY ... ON DELETE CASCADE`: deleting a student automatically removes their enrollments and marks, so no orphan rows can exist.
+- **1NF** — every attribute holds a single atomic value; each row is uniquely identified by a primary key.
+- **2NF** — no partial dependencies on a composite key: in `INTERNAL_MARKS` (key `ROLL_NO, COURSE_CODE, SEC_ID`) the marks depend on the *whole* key — a mark is meaningless without the student, the course *and* the section. Student details live in `STUDENTS` because they depend only on `ROLL_NO`.
+- **3NF** — no transitive dependencies: every non-key attribute in `STUDENTS` depends directly on `ROLL_NO` alone, and in `COURSES` on `COURSE_CODE` alone.
+- The many-to-many student ↔ section relationship is resolved through the `CLASS_ENROLLMENT` junction table.
 
-## Trigger (Automatic Final IA)
+### Data Integrity
 
-`triggers.sql` defines a `BEFORE INSERT OR UPDATE` trigger on `INTERNAL_MARKS`. Whenever test marks are inserted or changed, the trigger recomputes `FINAL_IA` as the average of the best two of the three tests (or `NULL` until all three tests have marks). The stored value can therefore never go stale.
+- `CHECK`: marks 0–25, semester 1–8, section A/B/C, gender M/F, credits 1–5, mobile exactly 10 digits
+- `NOT NULL` on essential attributes; `UNIQUE` on mobile numbers
+- `FOREIGN KEY ... ON DELETE CASCADE` — deleting a student removes their enrollments and marks automatically, so orphan rows cannot exist
 
-## Indexes & Query Optimization
+### Trigger: automatic Final IA
 
-`indexes.sql` creates secondary indexes on the join columns (`COURSE_CODE`, `SEC_ID`) and filter columns (`CITY`, `(SEMESTER, SECTION)`), and uses `EXPLAIN ANALYZE` to inspect the query plans. On tiny tables PostgreSQL prefers sequential scans; the indexes demonstrate the read-speed vs. write-cost trade-off that matters at scale.
+A `BEFORE INSERT OR UPDATE` trigger on `INTERNAL_MARKS` recomputes `FINAL_IA` as the average of the best two of three tests (or `NULL` until all three tests have marks). The stored value can never go stale, and no application code is trusted to compute it.
 
-## Transactions (ACID)
+### Indexing & Query Plans
 
-`transactions.sql` demonstrates atomicity: a multi-statement admission (`INSERT` student + `INSERT` enrollment) committed as one unit, a `DELETE` safely undone with `ROLLBACK`, and partial undo inside a transaction using `SAVEPOINT`.
+Secondary indexes cover the join columns (`COURSE_CODE`, `SEC_ID`) and filter columns (`CITY`, `(SEMESTER, SECTION)`). `EXPLAIN ANALYZE` shows PostgreSQL choosing sequential scans on tiny tables — a demonstration of the read-speed vs. write-cost trade-off that only pays off as data grows.
 
-## SQL Scripts
+### Transactions (ACID)
 
-### DDL (Data Definition Language)
+A multi-statement admission committed atomically, a `DELETE` undone with `ROLLBACK`, and a partial undo inside a transaction using `SAVEPOINT`.
 
-The `ddl.sql` file contains SQL commands to create the tables.
+## 💻 Web App
 
-### DML (Data Manipulation Language)
+The Streamlit app demonstrates the full CRUD cycle against the database:
 
-The `dml.sql` file contains SQL commands to insert/update/delete data in the tables.
+| Page | What it does |
+|---|---|
+| **Dashboard** | Live metrics, average Final IA per course, students per section |
+| **Students** | List / add / delete students (delete cascades to enrollments and marks) |
+| **Enrollments** | Enroll students into semester-sections |
+| **Enter Marks** | Record test marks — `FINAL_IA` is filled in by the database trigger, not the app |
+| **Report Card** | Per-student marks with Outstanding / Average / Weak categorization |
 
-### DQL (Data Query Language)
-
-The `queries.sql` file contains SQL commands to fetch data from the tables:
-
-1. List all student details studying in fourth semester 'C' section.
-2. Compute the total number of male and female students in each semester and section.
-3. Create a view of Test1 marks of a given student in all courses.
-4. Calculate the Final IA (average of the best two test marks) and update the table for all students.
-5. Categorize 8th semester students as Outstanding / Average / Weak based on their Final IA.
-
-## Web App (Streamlit)
-
-`app.py` is a Streamlit front-end over the same database, demonstrating the full CRUD cycle:
-
-- **Dashboard** — student/course/section/marks counts, average Final IA per course, students per section.
-- **Students** — list, add (validated by the database's CHECK constraints) and delete (cascades to enrollments and marks).
-- **Enrollments** — enroll students into semester-sections.
-- **Enter Marks** — record the three test marks; `FINAL_IA` is filled in by the database trigger, not the app.
-- **Report Card** — per-student marks with the Outstanding/Average/Weak category.
-
-Every statement uses **parameterized queries** (`%s` placeholders via psycopg2) — user input is never concatenated into SQL, which prevents SQL injection.
+Every statement uses **parameterized queries** (`%s` placeholders via psycopg2) — user input is never concatenated into SQL, which prevents SQL injection. Invalid input (marks out of range, malformed mobile numbers) is rejected by the database's own constraints and surfaced in the UI.
 
 ### Screenshots
 
-![Dashboard](screenshots/dashboard.png)
+| Dashboard | Report Card |
+|---|---|
+| ![Dashboard](screenshots/dashboard.png) | ![Report Card](screenshots/report_card.png) |
 
-![Report Card](screenshots/report_card.png)
+| Enter Marks | Students |
+|---|---|
+| ![Enter Marks](screenshots/enter_marks.png) | ![Students](screenshots/students.png) |
 
-![Enter Marks](screenshots/enter_marks.png)
+## 🚀 Getting Started
 
-### Running the app
+### 1. Set up the database
+
+```sh
+# requires PostgreSQL (17 recommended)
+createdb student_records
+psql -d student_records -f ddl.sql
+psql -d student_records -f triggers.sql
+psql -d student_records -f dml.sql       # trigger fills in FINAL_IA automatically
+```
+
+Then explore `queries.sql`, `advanced_queries.sql`, `indexes.sql` and `transactions.sql` — or load everything at once:
+
+```sh
+psql -d student_records -f all_student_records_dbms.sql
+```
+
+### 2. Run the web app
 
 ```sh
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app connects to `localhost:5432 / student_records / postgres` by default; override with a `DATABASE_URL` (environment variable or Streamlit secret) or the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` environment variables.
+The app connects to `localhost:5432 / student_records / postgres` by default. Override with a `DATABASE_URL` (environment variable or Streamlit secret) or the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` variables.
 
-### Deployment
+## ☁️ Deployment
 
-The live demo runs on **Streamlit Community Cloud** (deployed straight from this repo) with the database hosted on **Neon** (serverless PostgreSQL, free tier). The connection string is supplied to the app as the `DATABASE_URL` Streamlit secret — no credentials live in the repository.
+The live demo runs on **Streamlit Community Cloud**, deployed straight from this repository, with the database hosted on **Neon** (serverless PostgreSQL, free tier). The connection string is supplied as the `DATABASE_URL` Streamlit secret — no credentials live in the repository.
 
-## How to Run
-
-1. Install PostgreSQL: Make sure PostgreSQL is installed on your system.
-2. Create Database: Create a new database in PostgreSQL (e.g. `student_records`).
-3. Run `ddl.sql` to create the tables with their constraints.
-4. Run `triggers.sql` to install the Final IA trigger.
-5. Run `dml.sql` to insert data (the trigger fills in `FINAL_IA` automatically).
-6. Run `queries.sql`, `advanced_queries.sql`, `indexes.sql` and `transactions.sql` to explore the queries.
-
-Alternatively, run everything at once:
-
-```sh
-psql -d student_records -f all_student_records_dbms.sql
+```
+Browser ──▶ Streamlit Community Cloud (app.py) ──▶ Neon serverless PostgreSQL
+                     ▲                                      ▲
+                auto-deploys                          schema + trigger
+                from GitHub main                      from ddl.sql / triggers.sql
 ```

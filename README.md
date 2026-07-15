@@ -1,5 +1,7 @@
 # Student Academic Records Management System
 
+**🌐 Live demo: https://student-academic-records.streamlit.app** (Streamlit Community Cloud + Neon serverless PostgreSQL)
+
 This project implements a Student Academic Records Management System using PostgreSQL, with a Streamlit web app on top for CRUD operations. It includes SQL scripts for table creation with integrity constraints, a PL/pgSQL trigger, data insertion, advanced queries, indexing and transactions — all designed using normalization principles.
 
 ## Project Structure
@@ -113,7 +115,11 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-The app connects to `localhost:5432 / student_records / postgres` by default; override with the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` environment variables.
+The app connects to `localhost:5432 / student_records / postgres` by default; override with a `DATABASE_URL` (environment variable or Streamlit secret) or the standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD` environment variables.
+
+### Deployment
+
+The live demo runs on **Streamlit Community Cloud** (deployed straight from this repo) with the database hosted on **Neon** (serverless PostgreSQL, free tier). The connection string is supplied to the app as the `DATABASE_URL` Streamlit secret — no credentials live in the repository.
 
 ## How to Run
 
